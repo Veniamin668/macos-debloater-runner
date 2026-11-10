@@ -35,22 +35,6 @@ Tested on a GitHub-hosted **macOS 27.0.1 ARM64 (Apple Silicon)** runner.
 | ![Before cleanup](docs/before.png) | ![After cleanup](docs/123after.png) |
 | **35.34 GiB free** | **138.75 GiB free** |
 
-### 🎬 Full cleanup demonstration
-
-<details>
-<summary>▶ Watch the macOS 27 cleanup demonstration</summary>
-
-<br>
-
-<video controls width="100%">
-  <source src="https://raw.githubusercontent.com/Veniamin668/macos-debloater-runner/v1/docs/after-result.mp4" type="video/quicktime">
-  Your browser does not support embedded video. [Open the video](docs/after-result.mp4).
-</video>
-
-[Open after-result.mp4](docs/after-result.mp4)
-
-</details>
-
 ---
 
 ## ⚡ Quick Integration
