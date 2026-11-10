@@ -1,6 +1,6 @@
 name: macOS Runner Debloater
 description: Reclaim disk space on GitHub-hosted macOS runners - pick your Xcode, clean Homebrew, simulators, Android, tool cache and more. Tailscale and Sunshine/Apollo are never touched.
-author: OWNER
+author: Veniamin668
 branding:
   icon: trash-2
   color: blue
