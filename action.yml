@@ -31,7 +31,7 @@ inputs:
     description: "Remove rustup and cargo"
     default: 'true'
   browsers:
-    description: "Remove Chrome, Edge, Firefox and their drivers (Safari is always kept)"
+    description: "Remove Chrome, Edge, their drivers and Selenium (Safari and Firefox are always kept)"
     default: 'true'
   homebrew:
     description: "Clean Homebrew (heavy formulae/casks, old node@/python@, autoremove, cleanup)"
