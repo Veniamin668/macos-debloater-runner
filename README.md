@@ -44,10 +44,10 @@ Tested on a GitHub-hosted **macOS 27.0.1 ARM64 (Apple Silicon)** runner.
 
 <video controls width="100%">
   <source src="https://raw.githubusercontent.com/Veniamin668/macos-debloater-runner/v1/docs/after-result.mp4" type="video/quicktime">
-  Your browser does not support embedded video. [Open the video](docs/after-result.mov).
+  Your browser does not support embedded video. [Open the video](docs/after-result.mp4).
 </video>
 
-[Open after-result.mov](docs/after-result.mov)
+[Open after-result.mp4](docs/after-result.mp4)
 
 </details>
 
