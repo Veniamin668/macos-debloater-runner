@@ -32,7 +32,7 @@ Tested on a GitHub-hosted **macOS 27.0.1 ARM64 (Apple Silicon)** runner.
 
 | Before cleanup | After cleanup |
 |:---:|:---:|
-| ![Before cleanup](docs/before.png) | ![After cleanup](docs/123after.png) |
+| ![Before cleanup](docs/before.png) | ![After cleanup](docs/after.png) |
 | **35.34 GiB free** | **138.75 GiB free** |
 
 ---
