@@ -32,7 +32,7 @@ jobs:
     steps:
       - name: Free up disk space
         id: debloat
-        uses: Veniamin668/macos-debloater-runner@1
+        uses: Veniamin668/macos-debloater-runner@v1
         with:
           xcode: none
 
@@ -53,7 +53,7 @@ Safe Testing
 Before enabling destructive cleanup, you can inspect the cleanup plan:
 
 - name: Preview cleanup
-  uses: Veniamin668/macos-debloater-runner@1
+  uses: Veniamin668/macos-debloater-runner@v1
   with:
     dry-run: true
 
@@ -99,7 +99,7 @@ Supported values:
 
 Example:
 
-- uses: Veniamin668/macos-debloater-runner@1
+- uses: Veniamin668/macos-debloater-runner@v1
   with:
     xcode: "27.2"
     xcode-strip-platforms: tvos,watchos,visionos
@@ -182,7 +182,7 @@ Maximum Cleanup
 
 Suitable for streaming, general CI, scripting and environments that do not require Xcode or Android tooling.
 
-- uses: Veniamin668/macos-debloater-runner@1
+- uses: Veniamin668/macos-debloater-runner@v1
   with:
     xcode: none
 
@@ -190,7 +190,7 @@ iOS / macOS Development
 
 Keep one Xcode installation and remove unnecessary platforms.
 
-- uses: Veniamin668/macos-debloater-runner@1
+- uses: Veniamin668/macos-debloater-runner@v1
   with:
     xcode: "27.2"
     xcode-strip-platforms: tvos,watchos,visionos
@@ -200,17 +200,17 @@ Android Development on macOS
 
 Preserve Android tooling and JDK 17.
 
-- uses: Veniamin668/macos-debloater-runner@1
+- uses: Veniamin668/macos-debloater-runner@v1
   with:
     xcode: none
     android: false
     java-keep: "17"
 
-Streaming / Sunshine / Apollo
+Streaming / Sunshine
 
 Remove unnecessary development environments while preserving the software required for streaming.
 
-- uses: Veniamin668/macos-debloater-runner@1
+- uses: Veniamin668/macos-debloater-runner@v1
   with:
     xcode: none
     simulators: true
@@ -221,7 +221,7 @@ Preview Only
 
 Inspect the cleanup plan without modifying the runner.
 
-- uses: Veniamin668/macos-debloater-runner@1
+- uses: Veniamin668/macos-debloater-runner@v1
   with:
     dry-run: true
 
