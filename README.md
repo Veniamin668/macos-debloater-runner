@@ -23,9 +23,9 @@ Tested on a GitHub-hosted **macOS 27.0.1 ARM64 (Apple Silicon)** runner.
 
 | Metric | Result |
 |---|---:|
-| Free space before | 35.34 GiB |
-| Free space after | 138.75 GiB |
-| **Space reclaimed** | **103.41 GiB** |
+| Free space before | 36.56 GiB |
+| Free space after | 147.37 GiB |
+| **Space reclaimed** | **110.81 GiB** |
 | Execution time | 3m 35s |
 
 ### Before / After
