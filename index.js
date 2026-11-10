@@ -77,6 +77,15 @@ function sh(cmd, { timeout = 0 } = {}) {
   return { code: r.status ?? 1, out: r.stdout || '', err: r.stderr || '' };
 }
 
+/* ───────────────────────── system auto-detection ───────────────────────── */
+// Nothing to configure: macOS version, CPU architecture and Homebrew prefix are detected at runtime.
+const SYS = (() => {
+  const ver = sh('sw_vers -productVersion').out.trim() || '?';
+  const arch = sh('uname -m').out.trim() || '?';
+  const intel = arch === 'x86_64';
+  return { ver, major: parseInt(ver, 10) || 0, arch, intel, brewPrefix: intel ? '/usr/local' : '/opt/homebrew' };
+})();
+
 const sizeKB = (p) => Number(sh(`sudo -n du -sk ${q(p)} 2>/dev/null | cut -f1`).out.trim()) || 0;
 
 function freeKB() {
@@ -293,7 +302,7 @@ function brewUninstall(B, kind, names) {
 
 function homebrew() {
   if (!bool('homebrew', true)) { log(dim('  disabled')); return; }
-  const B = fs.existsSync('/opt/homebrew/bin/brew') ? '/opt/homebrew/bin/brew' : 'brew';
+  const B = [`${SYS.brewPrefix}/bin/brew`, '/opt/homebrew/bin/brew', '/usr/local/bin/brew'].find((p) => fs.existsSync(p)) || 'brew';
   const short = (n) => n.split('/').pop();
   const full = (kind) => sh(`${B} list --${kind} --full-name -1`).out.split('\n').map((s) => s.trim()).filter(Boolean);
   const fFull = full('formula'), cFull = full('cask');
@@ -341,10 +350,10 @@ function homebrew() {
     /^session-manager-plugin$/, /^bicep$/, /^packer$/, /^bazel(isk)?$/, /^azcopy$/,
     /^maven$/, /^ant$/, /^gradle$/, /^kotlin$/, /^carthage$/, /^cocoapods$/, /^fastlane$/,
     /^swiftformat$/, /^xcbeautify$/, /^xcodes$/,
-    ...(browsers ? [/^geckodriver$/, /^selenium-server$/, /^chromedriver$/] : []),
+    ...(browsers ? [/^selenium-server$/, /^chromedriver$/] : []),   // geckodriver stays (Firefox is kept)
   ];
   const DENY_C = [
-    ...(browsers ? [/^google-chrome/, /^chromedriver$/, /^microsoft-edge/, /^firefox/, /^selenium-server$/] : []),
+    ...(browsers ? [/^google-chrome/, /^chromedriver$/, /^microsoft-edge/, /^selenium-server$/] : []),   // Firefox is kept
     ...(bool('powershell', true) ? [/^powershell/] : []),
     ...(android ? [/^android-/] : []),
     ...(bool('dotnet', true) ? [/^dotnet/] : []),
@@ -445,10 +454,10 @@ function rust() {
 
 function browsers() {
   if (!bool('browsers', true)) { log(dim('  disabled')); return; }
-  for (const a of ['Google Chrome.app', 'Google Chrome for Testing.app', 'Microsoft Edge.app', 'Firefox.app']) remove(`/Applications/${a}`, 'Browsers');
-  for (const p of ['/usr/local/share/chromedriver-mac-arm64', '/usr/local/share/chromedriver-mac-x64', '/usr/local/share/chromedriver', '/usr/local/share/edge_driver',
+  for (const a of ['Google Chrome.app', 'Google Chrome for Testing.app', 'Microsoft Edge.app']) remove(`/Applications/${a}`, 'Browsers');   // Safari and Firefox are kept
+  for (const p of [`/usr/local/share/chromedriver-mac-${SYS.intel ? 'x64' : 'arm64'}`, '/usr/local/share/chromedriver', '/usr/local/share/edge_driver',
     '/usr/local/bin/chromedriver', '/usr/local/bin/msedgedriver', '/usr/local/share/selenium']) remove(p, 'Browsers');
-  for (const p of ['Google', 'Microsoft Edge', 'Firefox']) remove(`${HOME}/Library/Application Support/${p}`, 'Browsers');
+  for (const p of ['Google', 'Microsoft Edge']) remove(`${HOME}/Library/Application Support/${p}`, 'Browsers');
 }
 
 function caches() {
@@ -493,12 +502,11 @@ function writeSummary({ before, after, freed, estimate, macos, arch, plan }) {
 /* ───────────────────────── main ───────────────────────── */
 (async () => {
   const plan = planXcode();            // throws BEFORE any deletion if the requested version is missing
-  const macos = sh('sw_vers -productVersion').out.trim() || '?';
-  const arch = sh('uname -m').out.trim() || '?';
+  const macos = SYS.ver, arch = SYS.arch;
   const before = freeKB();
 
   box(`macOS Runner Debloater${DRY ? '  [DRY RUN]' : ''}`, [
-    `Runner       macOS ${macos} (${arch})`,
+    `Runner       macOS ${macos} (${arch}${SYS.intel ? ', Intel' : ', Apple silicon'})  ·  detected automatically`,
     `Free space   ${bold(gib(before) + ' GiB')}`,
     `Xcode        ${plan.skip ? 'untouched' : plan.keep ? 'keep ' + path.basename(plan.keep) : 'remove all'}`,
     `Always kept  Tailscale, Sunshine/Apollo, latest node & python`,
