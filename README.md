@@ -357,4 +357,4 @@ See "LICENSE" (LICENSE) for the full license text.
 
 ---
 
-Maintained by "ktoya?" (https://github.com/Veniamin668).
+Maintained by "Veniamin668" (https://github.com/Veniamin668).
