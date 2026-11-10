@@ -1,0 +1,111 @@
+name: macOS Runner Debloater
+description: Reclaim disk space on GitHub-hosted macOS runners - pick your Xcode, clean Homebrew, simulators, Android, tool cache and more. Tailscale and Sunshine/Apollo are never touched.
+author: OWNER
+branding:
+  icon: trash-2
+  color: blue
+
+inputs:
+  xcode:
+    description: "Which Xcode to keep: default | latest | a version (27.2, 16.4, 26.1) | none (remove all) | all (leave untouched)"
+    default: 'default'
+  xcode-strip-platforms:
+    description: "Strip platforms from the kept Xcode: ios,tvos,watchos,visionos,driverkit or all. Empty = keep everything"
+    default: ''
+  simulators:
+    description: "Remove simulators, CoreSimulator, DerivedData and ~/Library/Developer"
+    default: 'true'
+  android:
+    description: "Remove the Android SDK/NDK"
+    default: 'true'
+  java-keep:
+    description: "JDK major version to keep; none = remove all JDKs; all = leave untouched"
+    default: '21'
+  dotnet:
+    description: "Remove .NET SDKs"
+    default: 'true'
+  powershell:
+    description: "Remove PowerShell"
+    default: 'true'
+  rust:
+    description: "Remove rustup and cargo"
+    default: 'true'
+  browsers:
+    description: "Remove Chrome, Edge, Firefox and their drivers (Safari is always kept)"
+    default: 'true'
+  homebrew:
+    description: "Clean Homebrew (heavy formulae/casks, old node@/python@, autoremove, cleanup)"
+    default: 'true'
+  homebrew-remove:
+    description: "Extra Homebrew names or globs to uninstall, comma separated"
+    default: ''
+  homebrew-keep:
+    description: "Homebrew names or globs to never uninstall, comma separated"
+    default: ''
+  toolcache-keep-latest:
+    description: "Tool cache folders in which only the newest version is kept"
+    default: 'Python,node'
+  toolcache-remove:
+    description: "Tool cache folders to remove completely"
+    default: 'Ruby,go,PyPy,CodeQL'
+  caches:
+    description: "Clean caches (~/Library/Caches, ~/.npm, ~/.gradle, ~/.m2, ...)"
+    default: 'true'
+  misc:
+    description: "Remove vcpkg, ~/image-generation and ~/actionarchivecache"
+    default: 'true'
+  disable-spotlight:
+    description: "Disable Spotlight indexing during the run"
+    default: 'true'
+  keep-paths:
+    description: "Extra paths that must never be deleted, comma separated"
+    default: ''
+  dry-run:
+    description: "Delete nothing; print the plan with sizes"
+    default: 'false'
+  report-sizes:
+    description: "Measure every removed path (slower; always on in dry-run)"
+    default: 'false'
+  analyze:
+    description: "Print the biggest folders before cleaning (always on in dry-run)"
+    default: 'false'
+
+outputs:
+  freed-gb:
+    description: GiB freed (measured with df on the Data volume)
+    value: ${{ steps.debloat.outputs.freed-gb }}
+  free-before-gb:
+    description: GiB free before cleaning
+    value: ${{ steps.debloat.outputs.free-before-gb }}
+  free-after-gb:
+    description: GiB free after cleaning
+    value: ${{ steps.debloat.outputs.free-after-gb }}
+
+runs:
+  using: composite
+  steps:
+    - id: debloat
+      shell: bash
+      env:
+        INPUT_XCODE: ${{ inputs.xcode }}
+        INPUT_XCODE_STRIP_PLATFORMS: ${{ inputs.xcode-strip-platforms }}
+        INPUT_SIMULATORS: ${{ inputs.simulators }}
+        INPUT_ANDROID: ${{ inputs.android }}
+        INPUT_JAVA_KEEP: ${{ inputs.java-keep }}
+        INPUT_DOTNET: ${{ inputs.dotnet }}
+        INPUT_POWERSHELL: ${{ inputs.powershell }}
+        INPUT_RUST: ${{ inputs.rust }}
+        INPUT_BROWSERS: ${{ inputs.browsers }}
+        INPUT_HOMEBREW: ${{ inputs.homebrew }}
+        INPUT_HOMEBREW_REMOVE: ${{ inputs.homebrew-remove }}
+        INPUT_HOMEBREW_KEEP: ${{ inputs.homebrew-keep }}
+        INPUT_TOOLCACHE_KEEP_LATEST: ${{ inputs.toolcache-keep-latest }}
+        INPUT_TOOLCACHE_REMOVE: ${{ inputs.toolcache-remove }}
+        INPUT_CACHES: ${{ inputs.caches }}
+        INPUT_MISC: ${{ inputs.misc }}
+        INPUT_DISABLE_SPOTLIGHT: ${{ inputs.disable-spotlight }}
+        INPUT_KEEP_PATHS: ${{ inputs.keep-paths }}
+        INPUT_DRY_RUN: ${{ inputs.dry-run }}
+        INPUT_REPORT_SIZES: ${{ inputs.report-sizes }}
+        INPUT_ANALYZE: ${{ inputs.analyze }}
+      run: node "$GITHUB_ACTION_PATH/index.js"
