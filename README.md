@@ -1,360 +1,445 @@
-🧹 macOS Runner Debloater
+# 🧹 macOS Runner Debloater
 
-A powerful disk cleanup action for GitHub-hosted macOS runners.
+**A powerful disk cleanup GitHub Action for GitHub-hosted macOS runners.**
 
-Free up disk space by removing unnecessary preinstalled software, development toolchains, simulators, SDKs, caches and other runner image components.
+Reclaim disk space by removing unnecessary preinstalled software, development toolchains, SDKs, simulators, caches and other runner image components.
 
-Choose which Xcode installation to keep, configure individual cleanup categories, protect important software and inspect disk usage before making changes.
+- Automatic macOS and CPU architecture detection
+- Configurable Xcode cleanup and platform stripping
+- Homebrew package and dependency cleanup
+- Android, Java, .NET, PowerShell and Rust cleanup
+- Browser, simulator and tool cache removal
+- Protected paths and software
+- Before/after disk space measurements
+- Detailed GitHub Actions job summary
 
 Tailscale and Sunshine/Apollo are explicitly protected.
 
-GitHub-hosted macOS images come with a substantial amount of preinstalled software. This action helps reclaim valuable disk space for builds, development environments, streaming sessions and large downloads.
+---
 
-Before / After
+## 🚀 Real-world results
 
-Before| After
-"Disk space before cleanup" (docs/before.png)| "Disk space after cleanup" (docs/after.png)
+Tested on a GitHub-hosted **macOS 27.0.1 ARM64 (Apple Silicon)** runner.
 
-Quick Start
+| Metric | Result |
+|---|---:|
+| Free space before | 35.34 GiB |
+| Free space after | 138.75 GiB |
+| **Space reclaimed** | **103.41 GiB** |
+| Execution time | 3m 35s |
 
-Add the action as the first step in your GitHub Actions workflow:
+### Before / After
 
-name: Build
+| Before cleanup | After cleanup |
+|:---:|:---:|
+| ![Before cleanup](docs/before.png) | ![After cleanup](docs/123after.png) |
+| **35.34 GiB free** | **138.75 GiB free** |
+
+### 🎬 Full cleanup demonstration
+
+<details>
+<summary>▶ Watch the macOS 27 cleanup demonstration</summary>
+
+<br>
+
+<video controls width="100%">
+  <source src="https://raw.githubusercontent.com/Veniamin668/macos-debloater-runner/v1/docs/after-result.mov" type="video/quicktime">
+  Your browser does not support embedded video. [Open the video](docs/after-result.mov).
+</video>
+
+[Open after-result.mov](docs/after-result.mov)
+
+</details>
+
+---
+
+## ⚡ Quick Integration
+
+Add this action as the first step in your workflow, before checking out your repository or installing additional dependencies.
+
+```yaml
+name: macOS Build
 
 on:
-  push:
   workflow_dispatch:
+  push:
 
 jobs:
   build:
-    runs-on: xcode-27
+    runs-on: macos-26
 
     steps:
-      - name: Free up disk space
+      - name: 🧹 Debloat macOS Runner
         id: debloat
-        uses: Veniamin668/macos-debloater-runner@v1
+        uses: Veniamin668/macos-debloater-runner@1
         with:
           xcode: none
 
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      # Your workflow steps
-
-      - name: Display cleanup results
+      - name: Display disk space results
         run: |
-          echo "Freed: ${{ steps.debloat.outputs.freed-gb }} GiB"
           echo "Before: ${{ steps.debloat.outputs.free-before-gb }} GiB"
-          echo "After: ${{ steps.debloat.outputs.free-after-gb }} GiB"
+          echo "After:  ${{ steps.debloat.outputs.free-after-gb }} GiB"
+          echo "Freed:  ${{ steps.debloat.outputs.freed-gb }} GiB"
 
-No checkout is required before the debloater. GitHub Actions downloads the action directly from its repository.
+      # Your build steps here
+```
 
-Safe Testing
+**No checkout is required before running the debloater.** GitHub Actions downloads the action directly from its repository.
 
-Before enabling destructive cleanup, you can inspect the cleanup plan:
+### Maximum cleanup
 
-- name: Preview cleanup
-  uses: Veniamin668/macos-debloater-runner@v1
+For workflows that do not need Xcode, Android, Java, browsers or other development environments:
+
+```yaml
+- name: 💀 Fully Debloat macOS Runner
+  uses: Veniamin668/macos-debloater-runner@1
+  with:
+    xcode: none
+    simulators: true
+    android: true
+    java-keep: none
+    dotnet: true
+    powershell: true
+    rust: true
+    browsers: true
+    homebrew: true
+    toolcache-keep-latest: ''
+    toolcache-remove: 'Python,node,Ruby,go,PyPy,CodeQL'
+    caches: true
+    misc: true
+    disable-spotlight: true
+    report-sizes: true
+```
+
+This is an aggressive configuration. Make sure your workflow does not depend on the software being removed.
+
+---
+
+## 🧪 Safe Testing
+
+Preview cleanup operations before actually deleting anything:
+
+```yaml
+- name: Preview macOS cleanup
+  uses: Veniamin668/macos-debloater-runner@1
   with:
     dry-run: true
+```
 
 Dry-run mode:
 
 - Does not delete files.
 - Displays planned cleanup operations.
-- Analyzes large directories.
-- Measures individual target sizes.
-- Estimates reclaimable disk space.
+- Automatically analyzes large directories.
+- Automatically measures cleanup target sizes.
+- Helps estimate potential disk space recovery.
 
-Once satisfied with the plan, disable "dry-run".
+---
 
-Configuration
+## ⚙️ Configuration
 
-Xcode
+All inputs are optional. The following tables list their default values.
 
-The "xcode" input determines which Xcode installation is retained.
+### Xcode
 
-Value| Behavior
-"default"| Keep the Xcode installation currently referenced by "Xcode.app"
-"latest"| Keep the newest installed Xcode version
-"27.2", "16.4", "26.1", etc.| Keep the specified version
-"none"| Remove all Xcode installations and select Command Line Tools
-"all"| Leave all Xcode installations untouched
+| Input | Default | Description |
+|---|---|---|
+| `xcode` | `default` | Select which Xcode installation to keep |
+| `xcode-strip-platforms` | Empty | Remove selected platforms from the retained Xcode |
 
-If the requested version is unavailable, the action fails before performing cleanup and reports installed versions.
+Supported `xcode` values:
 
-After cleanup, "/Applications/Xcode.app" and "xcode-select" are updated to reference the retained installation.
+| Value | Behavior |
+|---|---|
+| `default` | Keep the Xcode currently referenced by `/Applications/Xcode.app` |
+| `latest` | Keep the newest installed Xcode |
+| `27.2`, `16.4`, etc. | Keep a specific version |
+| `none` | Remove all Xcode installations |
+| `all` | Leave all Xcode installations untouched |
 
-Xcode Platform Stripping
+If a requested version is unavailable, the action fails before performing cleanup.
 
-Use "xcode-strip-platforms" to remove unnecessary development platforms from the retained Xcode installation.
+After selecting Xcode, the action updates `/Applications/Xcode.app` and `xcode-select` accordingly.
 
-Supported values:
+Supported platform stripping values:
 
-- "ios"
-- "tvos"
-- "watchos"
-- "visionos"
-- "driverkit"
-- "all"
+- `ios`
+- `tvos`
+- `watchos`
+- `visionos`
+- `driverkit`
+- `all`
 
 Example:
 
-- uses: Veniamin668/macos-debloater-runner@v1
+```yaml
+- uses: Veniamin668/macos-debloater-runner@1
   with:
-    xcode: "27.2"
-    xcode-strip-platforms: tvos,watchos,visionos
+    xcode: '27.2'
+    xcode-strip-platforms: 'tvos,watchos,visionos'
+```
 
-"all" removes all supported additional platforms, leaving the macOS platform intact.
+`all` removes the supported additional platforms while retaining the macOS platform.
 
-Cleanup Categories
+### Cleanup categories
 
-Each category can be independently enabled or disabled.
+| Input | Default | Description |
+|---|---|---|
+| `simulators` | `true` | Remove simulator runtimes, CoreSimulator and developer directories |
+| `android` | `true` | Remove Android SDK directories and related user data |
+| `dotnet` | `true` | Remove .NET SDKs and related files |
+| `powershell` | `true` | Remove PowerShell installations |
+| `rust` | `true` | Remove Rust, rustup and Cargo |
+| `browsers` | `true` | Remove Chrome, Edge, browser drivers and Selenium |
+| `homebrew` | `true` | Clean Homebrew packages, dependencies and caches |
+| `caches` | `true` | Clean development and package-manager caches |
+| `misc` | `true` | Remove miscellaneous runner image leftovers |
 
-Input| Default| Description
-"simulators"| "true"| Remove simulator runtimes, CoreSimulator and developer directories
-"android"| "true"| Remove Android SDK and related user directories
-"dotnet"| "true"| Remove .NET SDK installations and related files
-"powershell"| "true"| Remove PowerShell installations
-"rust"| "true"| Remove Rust toolchains, rustup and Cargo
-"browsers"| "true"| Remove Chrome, Edge, browser drivers and Selenium
-"homebrew"| "true"| Remove selected Homebrew packages and clean dependencies
-"caches"| "true"| Clean development and package-manager caches
-"misc"| "true"| Remove miscellaneous runner image leftovers
+Set a category to `false` to preserve it.
 
-Set an input to "false" to preserve its corresponding cleanup category.
+### Java
 
-Homebrew Configuration
-
-Homebrew cleanup uses explicit removal lists and protected dependency calculations.
-
-Input| Default| Description
-"homebrew"| "true"| Enable or disable Homebrew cleanup
-"homebrew-remove"| "''"| Additional formulae or casks to uninstall, comma-separated
-"homebrew-keep"| "''"| Formulae or casks that must never be uninstalled, comma-separated
-
-The cleanup includes selected heavy development packages, outdated Node.js/Python versions, browser packages and unnecessary dependencies.
-
-Tailscale and Sunshine/Apollo packages and their protected dependencies are excluded from removal.
-
-Java
-
-Input| Default| Description
-"java-keep"| "21"| JDK major version to retain
+| Input | Default | Description |
+|---|---|---|
+| `java-keep` | `21` | JDK major version to retain |
 
 Supported values:
 
-- "21", "17", etc. — preserve the selected JDK major version.
-- "none" — remove all detected JDK installations.
-- "all" — leave Java installations untouched.
+- `21`, `17`, etc. — preserve the selected JDK version.
+- `none` — remove all detected JDK installations.
+- `all` — leave Java installations untouched.
 
-Tool Cache
+### Homebrew
 
-Input| Default| Description
-"toolcache-keep-latest"| "Python,node"| Keep only the newest version of selected tool cache packages
-"toolcache-remove"| "Ruby,go,PyPy,CodeQL"| Remove selected tool cache packages completely
+| Input | Default | Description |
+|---|---|---|
+| `homebrew` | `true` | Enable or disable Homebrew cleanup |
+| `homebrew-remove` | Empty | Additional formulae or casks to uninstall |
+| `homebrew-keep` | Empty | Formulae or casks that must never be uninstalled |
 
-The action automatically detects the runner tool cache location using "RUNNER_TOOL_CACHE", falling back to "~/hostedtoolcache".
+Additional package names and glob patterns are comma-separated.
 
-Additional Protection
+The cleanup includes selected heavyweight packages, outdated Node.js/Python versions, browser packages and unnecessary dependencies.
 
-Input| Default| Description
-"keep-paths"| "''"| Additional filesystem paths that must never be deleted
+Tailscale and Sunshine/Apollo packages and their protected dependencies are excluded.
+
+### Tool Cache
+
+| Input | Default | Description |
+|---|---|---|
+| `toolcache-keep-latest` | `Python,node` | Keep only the newest version of selected packages |
+| `toolcache-remove` | `Ruby,go,PyPy,CodeQL` | Remove selected tool cache packages completely |
+
+The action detects the tool cache through `RUNNER_TOOL_CACHE`, falling back to `~/hostedtoolcache`.
+
+### Additional protection
+
+| Input | Default | Description |
+|---|---|---|
+| `keep-paths` | Empty | Additional filesystem paths that must never be deleted |
 
 Multiple paths can be specified using commas.
 
-Protected paths are checked during cleanup operations, including when cleaning directory contents.
+### Diagnostics and system settings
 
-Diagnostics and System Settings
+| Input | Default | Description |
+|---|---|---|
+| `dry-run` | `false` | Preview cleanup without deleting anything |
+| `report-sizes` | `false` | Measure individual cleanup targets |
+| `analyze` | `false` | Display the largest directories before cleanup |
+| `disable-spotlight` | `true` | Disable Spotlight indexing |
 
-Input| Default| Description
-"dry-run"| "false"| Preview cleanup without deleting anything
-"report-sizes"| "false"| Measure individual cleanup targets
-"analyze"| "false"| Display the largest directories before cleanup
-"disable-spotlight"| "true"| Disable Spotlight indexing
+Disk analysis and size reporting are automatically enabled in dry-run mode.
 
-Size reporting and disk analysis are automatically enabled in dry-run mode.
+**Spotlight note:** When enabled, Spotlight indexing is disabled using `mdutil`. The action does not currently automatically re-enable it.
 
-Note: Spotlight indexing is disabled through "mdutil". The action does not currently include an automatic re-enable operation.
+---
 
-Usage Examples
+## 💡 Usage Examples
 
-Maximum Cleanup
+### iOS / macOS development
 
-Suitable for streaming, general CI, scripting and environments that do not require Xcode or Android tooling.
+Keep Xcode and remove unnecessary platforms.
 
-- uses: Veniamin668/macos-debloater-runner@v1
+```yaml
+- uses: Veniamin668/macos-debloater-runner@1
   with:
-    xcode: none
-
-iOS / macOS Development
-
-Keep one Xcode installation and remove unnecessary platforms.
-
-- uses: Veniamin668/macos-debloater-runner@v1
-  with:
-    xcode: "27.2"
-    xcode-strip-platforms: tvos,watchos,visionos
+    xcode: '27.2'
+    xcode-strip-platforms: 'tvos,watchos,visionos'
     android: true
+```
 
-Android Development on macOS
+### Android development
 
 Preserve Android tooling and JDK 17.
 
-- uses: Veniamin668/macos-debloater-runner@v1
+```yaml
+- uses: Veniamin668/macos-debloater-runner@1
   with:
     xcode: none
     android: false
-    java-keep: "17"
+    java-keep: '17'
+```
 
-Streaming / Sunshine
+### Streaming / Sunshine
 
-Remove unnecessary development environments while preserving the software required for streaming.
+Remove unnecessary development environments while retaining streaming software.
 
-- uses: Veniamin668/macos-debloater-runner@v1
+```yaml
+- uses: Veniamin668/macos-debloater-runner@1
   with:
     xcode: none
     simulators: true
     android: true
     homebrew: true
+```
 
-Preview Only
+### Preview only
 
-Inspect the cleanup plan without modifying the runner.
-
-- uses: Veniamin668/macos-debloater-runner@v1
+```yaml
+- uses: Veniamin668/macos-debloater-runner@1
   with:
     dry-run: true
+```
 
-Automatic Detection
+---
 
-No manual runner configuration is required.
+## 🛡️ Protected Components
+
+The action explicitly protects:
+
+- Tailscale.
+- Sunshine and Apollo.
+- Protected Homebrew dependencies required by these applications.
+- Safari and Firefox.
+- GitHub Actions runner directories:
+  - `~/actions-runner`
+  - `~/work`
+  - `~/bootstrap`
+  - `RUNNER_TEMP`
+  - `GITHUB_WORKSPACE`
+- Currently active Node.js and Python executables.
+- Additional paths configured through `keep-paths`.
+- Homebrew packages configured through `homebrew-keep`.
+
+Protected paths are checked during cleanup operations, including directory-content cleanup.
+
+---
+
+## 📊 Outputs
+
+The action exposes three outputs.
+
+| Output | Description |
+|---|---|
+| `freed-gb` | GiB freed, measured using `df` on the Data volume |
+| `free-before-gb` | Available disk space before cleanup |
+| `free-after-gb` | Available disk space after cleanup |
+
+Example:
+
+```yaml
+- name: Display cleanup results
+  run: |
+    echo "Before: ${{ steps.debloat.outputs.free-before-gb }} GiB"
+    echo "After:  ${{ steps.debloat.outputs.free-after-gb }} GiB"
+    echo "Freed:  ${{ steps.debloat.outputs.freed-gb }} GiB"
+```
+
+The action also generates a GitHub Actions job summary containing:
+
+- Before/after disk space measurements.
+- Cleanup results.
+- Cleanup category information.
+- Individual operation timings.
+- Total execution time.
+
+---
+
+## 🔍 Automatic Detection
+
+No manual architecture or Homebrew configuration is required.
 
 The action automatically detects:
 
 - macOS version.
 - CPU architecture (Apple Silicon or Intel).
-- Homebrew installation prefix ("/opt/homebrew" or "/usr/local").
+- Homebrew installation prefix (`/opt/homebrew` or `/usr/local`).
 - Installed Xcode versions.
-- Active "node" and "python3" executables.
+- Active Node.js and Python executables.
 
 The detected environment is displayed in the action logs.
 
-Supported Runners
+### Supported runners
 
-Runner label| Architecture| Description
-"macos-15"| ARM64| macOS Sequoia
-"macos-26"| ARM64| macOS 26
-"macos-26-intel"| x86_64| Intel runner
-"xcode-27"| ARM64| macOS 27
+| Runner label | Architecture | Environment |
+|---|---|---|
+| `macos-15` | ARM64 | macOS Sequoia |
+| `macos-26` | ARM64 | macOS 26 |
+| `macos-26-intel` | x86_64 | Intel |
+| `xcode-27` | ARM64 | macOS 27 |
 
-Other macOS environments may work if they provide passwordless "sudo" and Node.js.
-
-What Gets Removed
-
-Component| Cleanup operations
-Xcode| Unselected Xcode installations and optionally selected development platforms
-Simulators| Simulator runtimes, CoreSimulator and "~/Library/Developer"
-Android| "~/Library/Android" and "~/.android"
-Homebrew| Selected formulae, casks, outdated runtimes and unnecessary dependencies
-Tool cache| Selected outdated tool versions and unnecessary toolchains
-Java| JDK installations except the configured version
-.NET| SDK installations and related files
-PowerShell| PowerShell installations
-Rust| Rustup and Cargo directories
-Browsers| Google Chrome, Microsoft Edge, browser drivers and Selenium
-Caches| Package-manager and development caches
-Miscellaneous| vcpkg, "~/image-generation" and "~/actionarchivecache"
-
-Protected Components
-
-The action explicitly protects:
-
-- Tailscale and Sunshine / Apollo, including protected Homebrew dependencies.
-- Safari and Firefox, including "geckodriver".
-- GitHub Actions runner directories:
-  - "~/actions-runner"
-  - "~/work"
-  - "~/bootstrap"
-  - "RUNNER_TEMP"
-  - "GITHUB_WORKSPACE"
-- The currently active "node" and "python3" executables in "PATH".
-- The newest Homebrew Node.js and Python packages.
-- Essential utilities such as Git, GitHub CLI, curl, jq, CMake, Ninja and OpenSSL.
-- Additional paths and Homebrew packages specified through "keep-paths" and "homebrew-keep".
-
-Outputs
-
-The action exposes the following outputs:
-
-Output| Description
-"freed-gb"| GiB freed, measured using "df" on the Data volume
-"free-before-gb"| Available disk space before cleanup
-"free-after-gb"| Available disk space after cleanup
-
-Example:
-
-- name: Display available space
-  run: |
-    echo "Before: ${{ steps.debloat.outputs.free-before-gb }} GiB"
-    echo "After:  ${{ steps.debloat.outputs.free-after-gb }} GiB"
-    echo "Freed:  ${{ steps.debloat.outputs.freed-gb }} GiB"
-
-The action also generates a GitHub Actions job summary containing:
-
-- Before/after disk space measurements.
-- Estimated or actual cleanup results.
-- Largest cleanup categories.
-- Individual operation timings.
-- Total execution time.
-
-How It Works
-
-1. Environment detection: Detects the macOS version, architecture, Homebrew prefix and installed Xcode versions.
-2. Cleanup planning: Resolves the Xcode selection before destructive operations begin.
-3. Disk analysis: Optionally identifies the largest directories and cleanup targets.
-4. Fast removal: Attempts to move selected targets into a temporary directory before deletion.
-5. Background deletion: Uses up to three parallel deletion workers.
-6. Protected Homebrew cleanup: Calculates protected dependencies before uninstalling selected packages and orphaned dependencies.
-7. Final measurements: Waits for deletion workers to finish and measures available disk space again.
-
-Requirements
-
-- macOS environment.
-- Passwordless "sudo".
-- Node.js available in "PATH".
-
-GitHub-hosted macOS runners provide these requirements by default.
-
-FAQ
-
-Can this action break my workflow?
-
-Yes, if your workflow requires software that has been removed.
-
-The defaults are intentionally aggressive. Use "dry-run: true" first, then disable individual cleanup categories or protect required components using "keep-paths" and "homebrew-keep".
-
-Does this action require checkout?
-
-No. GitHub Actions downloads the referenced action directly from its repository.
-
-Does it remove Tailscale or Sunshine?
-
-The action explicitly protects both, along with their protected Homebrew dependencies.
-
-Why are final disk-space measurements displayed at the end?
-
-Deletion operations can run in the background. Final measurements are collected after all deletion workers have completed.
-
-Can I use it on Intel runners?
-
-Yes. The action detects the architecture and adjusts its Homebrew prefix and browser-driver paths accordingly.
-
-License
-
-Licensed under the BSD 3-Clause License.
-
-See "LICENSE" (LICENSE) for the full license text.
+Other macOS environments may also work if they provide passwordless `sudo` and Node.js.
 
 ---
 
-Maintained by "Veniamin668" (https://github.com/Veniamin668).
+## 🧹 How It Works
+
+1. **Environment detection** — detects macOS, CPU architecture, Homebrew and installed Xcode versions.
+2. **Cleanup planning** — resolves the requested Xcode configuration before destructive operations.
+3. **Disk analysis** — optionally identifies large directories and cleanup targets.
+4. **Fast removal** — attempts to move selected targets into a temporary directory before deletion.
+5. **Background deletion** — processes deletion jobs using up to three parallel workers.
+6. **Protected Homebrew cleanup** — calculates protected dependencies before uninstalling packages and orphaned dependencies.
+7. **Final measurements** — waits for deletion workers and measures available disk space again.
+
+---
+
+## 📋 Requirements
+
+- macOS.
+- Passwordless `sudo`.
+- Node.js available in `PATH`.
+
+GitHub-hosted macOS runners normally provide these requirements.
+
+---
+
+## ❓ FAQ
+
+### Does this action require checkout?
+
+No. GitHub Actions downloads the referenced action directly from its repository.
+
+### Can it break my workflow?
+
+Yes, if your workflow requires software that has been removed.
+
+The default configuration is intentionally aggressive. Use `dry-run: true` before destructive cleanup and disable individual categories when necessary.
+
+### Does it remove Tailscale or Sunshine?
+
+No. These applications and their protected Homebrew dependencies are explicitly excluded.
+
+### Can I use it on Intel runners?
+
+Yes. The action detects the architecture and adjusts its Homebrew prefix and relevant paths.
+
+### Why are final disk measurements displayed at the end?
+
+Deletion operations can run in the background. Final measurements are collected after all deletion workers have completed.
+
+---
+
+## 📄 License
+
+This project is licensed under the **BSD 3-Clause License**.
+
+See [LICENSE](LICENSE) for the full license text.
+
+---
+
+**Maintained by [Veniamin668](https://github.com/Veniamin668).**
