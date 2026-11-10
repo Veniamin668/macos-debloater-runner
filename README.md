@@ -2,7 +2,7 @@
 
 **A powerful disk cleanup GitHub Action for GitHub-hosted macOS runners.**
 
-Free disk space on GitHub-hosted macOS runners by cleaning Xcode, Homebrew, simulators, SDKs and caches.
+Reclaim disk space by removing unnecessary preinstalled software, development toolchains, SDKs, simulators, caches and other runner image components.
 
 - Automatic macOS and CPU architecture detection
 - Configurable Xcode cleanup and platform stripping
