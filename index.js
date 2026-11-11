@@ -111,7 +111,7 @@ const cmpVer = (a, b) => {
 
 /* ───────────────────────── protection ───────────────────────── */
 // Tailscale and Sunshine/Apollo are never touched.
-const PROT_RE = /tailscale|sunshine|apollo/i;
+const PROT_RE = /tailscale|sunshine/i;
 const PROT_PREFIX = [
   `${HOME}/actions-runner`, `${HOME}/work`, `${HOME}/bootstrap`,
   env.RUNNER_TEMP, env.GITHUB_WORKSPACE, ...list('keep-paths'),
