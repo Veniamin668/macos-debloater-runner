@@ -6,7 +6,7 @@ Reclaim disk space by removing unnecessary preinstalled software, development to
 
 - Automatic macOS and CPU architecture detection
 - Configurable Xcode cleanup and platform stripping
-- Homebrew package and dependency cleanup
+- Homebrew package and dependency cleanup (White list)
 - Android, Java, .NET, PowerShell and Rust cleanup
 - Browser, simulator and tool cache removal
 - Protected paths and software
@@ -55,7 +55,7 @@ jobs:
     steps:
       - name: 🧹 Debloat macOS Runner
         id: debloat
-        uses: Veniamin668/macos-debloater-runner@v1
+        uses: Veniamin668/macos-debloater-runner@v2
         with:
           xcode: none
 
@@ -79,7 +79,7 @@ For workflows that do not need Xcode, Android, Java, browsers or other developme
 
 ```yaml
 - name: 💀 Fully Debloat macOS Runner
-  uses: Veniamin668/macos-debloater-runner@v1
+  uses: Veniamin668/macos-debloater-runner@v2
   with:
     xcode: none
     simulators: true
@@ -108,7 +108,7 @@ Preview cleanup operations before actually deleting anything:
 
 ```yaml
 - name: Preview macOS cleanup
-  uses: Veniamin668/macos-debloater-runner@v1
+  uses: Veniamin668/macos-debloater-runner@v2
   with:
     dry-run: true
 ```
@@ -160,7 +160,7 @@ Supported platform stripping values:
 Example:
 
 ```yaml
-- uses: Veniamin668/macos-debloater-runner@v1
+- uses: Veniamin668/macos-debloater-runner@v2
   with:
     xcode: '27.2'
     xcode-strip-platforms: 'tvos,watchos,visionos'
@@ -249,7 +249,7 @@ Disk analysis and size reporting are automatically enabled in dry-run mode.
 Keep Xcode and remove unnecessary platforms.
 
 ```yaml
-- uses: Veniamin668/macos-debloater-runner@v1
+- uses: Veniamin668/macos-debloater-runner@v2
   with:
     xcode: '27.2'
     xcode-strip-platforms: 'tvos,watchos,visionos'
@@ -261,7 +261,7 @@ Keep Xcode and remove unnecessary platforms.
 Preserve Android tooling and JDK 17.
 
 ```yaml
-- uses: Veniamin668/macos-debloater-runner@v1
+- uses: Veniamin668/macos-debloater-runner@v2
   with:
     xcode: none
     android: false
@@ -273,7 +273,7 @@ Preserve Android tooling and JDK 17.
 Remove unnecessary development environments while retaining streaming software.
 
 ```yaml
-- uses: Veniamin668/macos-debloater-runner@v1
+- uses: Veniamin668/macos-debloater-runner@v2
   with:
     xcode: none
     simulators: true
@@ -284,7 +284,7 @@ Remove unnecessary development environments while retaining streaming software.
 ### Preview only
 
 ```yaml
-- uses: Veniamin668/macos-debloater-runner@v1
+- uses: Veniamin668/macos-debloater-runner@v2
   with:
     dry-run: true
 ```
