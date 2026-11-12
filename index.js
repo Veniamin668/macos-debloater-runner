@@ -123,6 +123,49 @@ const isProtected = (p) => {
     PROT_PREFIX.some((x) => r === x || r.startsWith(x + '/') || x.startsWith(r + '/'));
 };
 
+/* ═════════════════════════ HOMEBREW WHITELIST ═════════════════════════
+ * Everything installed through Homebrew that is NOT in this list gets uninstalled.
+ *   - Formulae and casks go into the same list, one name per line.
+ *   - Globs work: 'python@*', 'node@*'.
+ *   - Dependencies of anything listed are kept automatically - do not list libraries.
+ *   - Active node/python (and the newest node@/python@) are detected by themselves.
+ *   - Tailscale and Sunshine are protected by PROT_RE above.
+ * Extra names can also be passed per workflow through the `homebrew-keep` input.
+ */
+const BREW_KEEP = [
+  // GUI apps (casks)
+  'telegram',
+  'steam',
+  'firefox',
+  'stats',
+  'iina',
+  'keka',
+  'fork',
+  'desktoppr',
+
+  // CLI tools (formulae)
+  'git',
+  'git-lfs',
+  'gh',
+  'curl',
+  'aria2',
+  'htop',
+  'fastfetch',
+  'cmatrix',
+  'wget',
+  'p7zip',
+  'gnu-tar',
+
+  // Handy extras - uncomment or add your own:
+  // 'jq',
+  // 'cmake',
+  // 'ninja',
+  // 'yq',
+  // 'btop',
+  // 'geckodriver',
+  // 'pipx',
+];
+
 /* ───────────────────────── deletion engine ───────────────────────── */
 const TRASH = '/private/var/tmp/.debloat-trash';
 const rows = [];          // { cat, p, kb }
@@ -309,25 +352,7 @@ function homebrew() {
   const fShort = fFull.map(short), cShort = cFull.map(short);
   log(`  installed: ${fShort.length} formulae, ${cShort.length} casks`);
 
-  /* 1. Protected set: tailscale/sunshine/apollo + their dependency closure + homebrew-keep */
-  const keepGlobs = list('homebrew-keep').map(glob);
-  const userKept = (n) => keepGlobs.some((g) => g.test(n));
-  const seeds = new Set(fShort.filter((n) => PROT_RE.test(n)));
-  for (const c of cShort.filter((n) => PROT_RE.test(n))) {
-    try {
-      const j = JSON.parse(sh(`${B} info --json=v2 --cask ${q(c)}`).out);
-      for (const d of (j.casks?.[0]?.depends_on?.formula || [])) seeds.add(short(d));
-    } catch { /* */ }
-  }
-  const closure = new Set(seeds);
-  if (seeds.size) {
-    for (const d of sh(`${B} deps --installed --union ${[...seeds].map(q).join(' ')}`).out.split('\n')) {
-      if (d.trim()) closure.add(short(d.trim()));
-    }
-  }
-  log(`  ${cyan('protected')} (tailscale/sunshine/apollo + deps): ${[...closure].join(', ') || '-'}`);
-
-  /* 2. node@N and python@X.Y: keep the active one and the newest one */
+  /* 1. node@N and python@X.Y: keep the active one and the newest one */
   const cellarOf = (bin) => {
     const w = sh(`command -v ${bin}`).out.trim();
     if (!w) return null;
@@ -339,44 +364,57 @@ function homebrew() {
   const keepFam = new Set([cellarOf('node'), cellarOf('python3')].filter(Boolean));
   if (nodeFs.length) keepFam.add([...nodeFs].sort((a, b) => nodeKey(b) - nodeKey(a))[0]);
   if (pyFs.length) keepFam.add([...pyFs].sort((a, b) => cmpVer(b.split('@')[1], a.split('@')[1]))[0]);
-  const oldFam = [...nodeFs, ...pyFs].filter((n) => !keepFam.has(n));
-  log(`  node/python kept: ${green([...keepFam].join(', ') || '-')}  ·  older: ${oldFam.join(', ') || '-'}`);
+  log(`  node/python kept: ${green([...keepFam].join(', ') || '-')}`);
 
-  /* 3. Deny lists */
-  const browsers = bool('browsers', true), android = bool('android', true);
+  /* 2. What is kept: whitelist + protected + node/python + category toggles + Java rule */
+  const listedGlobs = [...BREW_KEEP, ...list('homebrew-keep')].map(glob);
+  const forcedGlobs = list('homebrew-remove').map(glob);      // force-remove, overrides the whitelist
+  const listed = (n) => listedGlobs.some((g) => g.test(n));
+  const forced = (n) => forcedGlobs.some((g) => g.test(n));
+
   const javaKeep = input('java-keep', '21').toLowerCase();
-  const DENY_F = [
-    /^gcc(@\d+)?$/, /^llvm(@\d+)?$/, /^azure-cli$/, /^awscli$/, /^aws-sam-cli$/,
-    /^session-manager-plugin$/, /^bicep$/, /^packer$/, /^bazel(isk)?$/, /^azcopy$/,
-    /^maven$/, /^ant$/, /^gradle$/, /^kotlin$/, /^carthage$/, /^cocoapods$/, /^fastlane$/,
-    /^swiftformat$/, /^xcbeautify$/, /^xcodes$/,
-    ...(browsers ? [/^selenium-server$/, /^chromedriver$/] : []),   // geckodriver stays (Firefox is kept)
-  ];
-  const DENY_C = [
-    ...(browsers ? [/^google-chrome/, /^chromedriver$/, /^microsoft-edge/, /^selenium-server$/] : []),   // Firefox is kept
-    ...(bool('powershell', true) ? [/^powershell/] : []),
-    ...(android ? [/^android-/] : []),
-    ...(bool('dotnet', true) ? [/^dotnet/] : []),
-  ];
-  const extra = list('homebrew-remove').map(glob);
-  const hit = (n, deny) => deny.some((r) => r.test(n)) || extra.some((g) => g.test(n));
-
-  const fRemove = fFull.filter((f, i) => {
-    const n = fShort[i];
-    if (closure.has(n) || userKept(n) || keepFam.has(n)) return false;
-    return hit(n, DENY_F) || oldFam.includes(n);
-  });
-  const cRemove = cFull.filter((c, i) => {
-    const n = cShort[i];
-    if (PROT_RE.test(n) || userKept(n)) return false;
+  const javaKept = (n) => {
     const t = n.match(/^temurin(?:@(\d+))?$|^zulu(?:@(\d+))?$|^microsoft-openjdk(?:@(\d+))?$/);
-    if (t && javaKeep !== 'all') {
-      const ver = t[1] || t[2] || t[3];
-      return !(javaKeep !== 'none' && ver === javaKeep);
-    }
-    return hit(n, DENY_C);
-  });
+    if (!t) return false;
+    if (javaKeep === 'all') return true;
+    return javaKeep !== 'none' && (t[1] || t[2] || t[3]) === javaKeep;
+  };
+  // A category toggle set to false means "do not touch that category".
+  const toggleKept = (n) =>
+    (!bool('browsers', true) && /^(google-chrome|chromedriver|microsoft-edge|selenium-server|geckodriver)/.test(n)) ||
+    (!bool('powershell', true) && /^powershell/.test(n)) ||
+    (!bool('android', true) && /^android-/.test(n)) ||
+    (!bool('dotnet', true) && /^dotnet/.test(n));
 
+  const isKept = (n) =>
+    PROT_RE.test(n) || ((listed(n) || keepFam.has(n) || toggleKept(n) || javaKept(n)) && !forced(n));
+
+  /* 3. Dependency closure of everything that is kept (formulae + formulae required by kept casks) */
+  const seeds = new Set(fShort.filter(isKept));
+  const keptCasks = cFull.filter((c, i) => isKept(cShort[i]));
+  if (keptCasks.length) {
+    try {
+      const j = JSON.parse(sh(`${B} info --json=v2 --cask ${keptCasks.map(q).join(' ')}`).out);
+      for (const c of (j.casks || [])) for (const d of (c.depends_on?.formula || [])) seeds.add(short(d));
+    } catch { /* */ }
+  }
+  const closure = new Set(seeds);
+  if (seeds.size) {
+    for (const d of sh(`${B} deps --installed --union ${[...seeds].map(q).join(' ')}`).out.split('\n')) {
+      if (d.trim()) closure.add(short(d.trim()));
+    }
+  }
+
+  const keptF = fShort.filter(isKept);
+  const keptC = cShort.filter(isKept);
+  const keptDeps = fShort.filter((n) => !isKept(n) && closure.has(n));
+  log(`  ${green('keep')} formulae (${keptF.length}): ${keptF.join(' ') || '-'}`);
+  log(`  ${green('keep')} casks (${keptC.length}): ${keptC.join(' ') || '-'}`);
+  log(`  ${cyan('keep')} as dependencies (${keptDeps.length}): ${keptDeps.join(' ') || '-'}`);
+
+  /* 4. Everything else goes */
+  const fRemove = fFull.filter((f, i) => !isKept(fShort[i]) && !closure.has(fShort[i]));
+  const cRemove = cFull.filter((c, i) => !isKept(cShort[i]));
   log(`  formulae to remove (${fRemove.length}): ${fRemove.join(' ') || '-'}`);
   log(`  casks to remove (${cRemove.length}): ${cRemove.join(' ') || '-'}`);
   rows.push(...[...fRemove, ...cRemove].map((n) => ({ cat: 'Homebrew', p: `brew:${n}`, kb: 0 })));
@@ -385,10 +423,10 @@ function homebrew() {
   brewUninstall(B, 'cask', cRemove);
   brewUninstall(B, 'formula', fRemove);
 
-  /* 4. autoremove, minus the protected set */
+  /* 5. Leftover orphans (minus everything kept), then cleanup */
   const ar = sh(`${B} autoremove --dry-run`).out.split('\n')
     .map((s) => s.trim()).filter((s) => s && !s.startsWith('==>') && !/\s/.test(s));
-  const orphans = ar.filter((n) => !closure.has(short(n)) && !keepFam.has(short(n)) && !userKept(short(n)));
+  const orphans = ar.filter((n) => !isKept(short(n)) && !closure.has(short(n)));
   log(`  orphaned dependencies (${orphans.length}): ${orphans.join(' ') || '-'}`);
   brewUninstall(B, 'formula', orphans);
 
